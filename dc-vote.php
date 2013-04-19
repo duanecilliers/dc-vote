@@ -3,7 +3,7 @@
 Plugin Name: DC Vote
 Plugin URI: http://duane.co.za/plugins/dc-vote
 Description: Add voting functionality to posts, pages or custom post types. Enhanced with AJAX for real-time updates. Allow Facebook likes and Tweets to count as a vote! Administrators have complete control over voting features as well as the ability to easily create a custom template for displaying the vote button and text.
-Version: 1.0
+Version: 1.1
 Author: Duane Cilliers
 Author URI: http://duane.co.za/
 Author Email: duanecilliers@gmail.com
@@ -27,6 +27,14 @@ License:
 */
 
 /*
+ * TODO
+ * -----------------------
+ * -> JS to prompt user to register if "Allow public(unregistered or non logged in) users to vote" is set to "No"
+ * -> Add FB like box and JS if "Allow facebook like votes" is set to "Yes"
+ * -> FB like vote value
+ */
+
+/*
  * Breakdown
  * ---------------------
  * ->
@@ -35,6 +43,8 @@ License:
 class DCVote {
 
 	var $db_version;
+	var $plugin_path;
+
 
 	/*--------------------------------------------*
 	 * Constructor
@@ -46,6 +56,7 @@ class DCVote {
 	function __construct() {
 
 		$this->db_version = '1.0';
+		$this->plugin_path = plugin_dir_path( __FILE__ );
 
 		// Load plugin text domain
 		add_action( 'init', array( $this, 'plugin_textdomain' ) );
@@ -65,22 +76,19 @@ class DCVote {
 		add_action( 'plugins_loaded', array( $this, 'upgrade_db' ) );
 
 		add_shortcode( 'dcvote', array( $this, 'vote_shortcode' ) );
-
 		add_shortcode( 'dcv-top-voted', array( $this, 'top_voted_shortcode' ) );
 
 		add_action( 'admin_menu', array( $this, 'admin_vote_list' ) );
-
 		add_action( 'wp_head', array( $this, 'voting_header' ) );
 
-		// Non-logged in user
 		add_action( 'wp_ajax_nopriv_dcv-submit', array( $this, 'vote_ajax_submit' ) );
-		// Logged in user
 		add_action( 'wp_ajax_dcv-submit', array( $this, 'vote_ajax_submit' ) );
 
-		// Non-logged in user
 		add_action( 'wp_ajax_nopriv_dcv-top-widget', array( $this, 'top_ajax_submit' ) );
-		// Logged in user
 		add_action( 'wp_ajax_dcv-top-widget', array( $this, 'top_ajax_submit' ) );
+
+		add_action( 'wp_ajax_nopriv_dcv-fblike', array( $this, 'fblike_ajax_submit' ) );
+		add_action( 'wp_ajax_dcv-fblike', array( $this, 'fblike_ajax_submit' ) );
 
 
 	} // end constructor
@@ -151,10 +159,12 @@ class DCVote {
 	 */
 	public function register_plugin_scripts() {
 
+		$allow_fblike_vote = ( get_option( 'dcv-allow-fblike-vote' ) == 'Yes' ) ? true : false ;
+		$fb_app_id = $allow_fblike_vote ? get_option( 'dcv-fb-appid' ) : '' ;
 		$dcv_nonce = wp_create_nonce('dcv_submit_nonce');
 		wp_enqueue_script( 'dc-vote-plugin-script', plugins_url( 'dc-vote/js/display.js' ), array( 'jquery' ) );
-		wp_enqueue_script('dc-vote-voterajax', plugins_url( 'dc-vote/js/voterajax.js' ), array('jquery') );
-		wp_localize_script('dc-vote-voterajax', 'dcvAjax', array('ajaxurl' => admin_url('admin-ajax.php'), 'dcv_nonce' => $dcv_nonce,));
+		wp_enqueue_script( 'dc-vote-voterajax', plugins_url( 'dc-vote/js/voterajax.js' ), array( 'jquery' ) );
+		wp_localize_script( 'dc-vote-voterajax', 'dcvAjax', array( 'ajaxurl' => admin_url('admin-ajax.php'), 'dcv_nonce' => $dcv_nonce, 'allow_fb_vote' => $allow_fblike_vote, 'fb_app_id' => $fb_app_id ) );
 
 	} // end register_plugin_scripts
 
@@ -272,6 +282,9 @@ class DCVote {
 	 * Added dcv-vote-btn-custom-txt in v1.0
 	 * Added dcv-custom-css in v1.0
 	 * Added dcv-allow-public-vote in v1.0
+	 * Added dcv-allow-fblike-vote in v1.1
+	 * Added dcv-fblike-vote-value in v1.1
+	 * Added dcv-fb-appid in v1.1
 	 * @since 1.0
 	 */
 	function admin_vote_list() {
@@ -284,6 +297,9 @@ class DCVote {
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-custom-css' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-voting-alert-msg', '' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-allow-public-vote', '' );
+		register_setting( 'dcv_admin_vote_form_options', 'dcv-allow-fblike-vote', '' );
+		register_setting( 'dcv_admin_vote_form_options', 'dcv-fblike-vote-value', 'intval' );
+		register_setting( 'dcv_admin_vote_form_options', 'dcv-fb-appid' );
 	}
 
 	/*
@@ -311,6 +327,7 @@ class DCVote {
 	 * Added dcv-vote-btn-custom-txt in v1.0
 	 * Added dcv-custom-css in v1.0
 	 * Added dcv-allow-public-vote in v1.0
+	 * Added dcv-allow-fblike-vote in v1.1
 	 * @since 1.0
 	 */
 	function admin_vote_options() {
@@ -330,6 +347,7 @@ class DCVote {
 								$onoff = get_option( 'dc-vote-onoff' );
 								$allow_author_vote = get_option( 'dcv-allow-author-vote' );
 								$allow_public_vote = get_option( 'dcv-allow-public-vote' );
+								$allow_fblike_vote = get_option( 'dcv-allow-fblike-vote' );
 							?>
 							<div id="wpvsettings" class="postbox">
 								<div title="Click to toggle" class="handlediv"><br></div>
@@ -361,8 +379,27 @@ class DCVote {
 															<input type="radio" name="dcv-allow-public-vote" value="No" <?php if ( $allow_public_vote == 'No' || empty( $allow_public_vote ) ) echo 'checked="checked"'; ?> /> No
 														</td>
 													</tr>
+													<tr valign="top">
+														<th scope="row">Allow facebook like votes</th>
+														<td>
+															<input type="radio" name="dcv-allow-fblike-vote" value="Yes" <?php if ( $allow_fblike_vote == 'Yes' ) echo 'checked="checked"'; ?> /> Yes
+															<input type="radio" name="dcv-allow-fblike-vote" value="No" <?php if ( $allow_fblike_vote == 'No' || empty( $allow_fblike_vote ) ) echo 'checked="checked"'; ?> /> No
+														</td>
+													</tr>
 													<tr vlaign="top">
-														<th scope="row">Vote count custom text <br /><strong><i>(default: "voted")</i></strong></th>
+														<th scope="row">Value of a Facebook like vote <br /><strong><i>(default: 1)</i></strong></th>
+														<td>
+															<input type="text" name="dcv-fblike-vote-value" value="<?php echo get_option( 'dcv-fblike-vote-value' ); ?>" />
+														</td>
+													</tr>
+													<tr vlaign="top">
+														<th scope="row">Facebook App ID</th>
+														<td>
+															<input type="text" name="dcv-fb-appid" value="<?php echo get_option( 'dcv-fb-appid' ); ?>" />
+														</td>
+													</tr>
+													<tr vlaign="top">
+														<th scope="row">Vote count custom text <br /><strong><i>(default: "votes")</i></strong></th>
 														<td>
 															<input type="text" name="dcv-voted-custom-txt" value="<?php echo get_option( 'dcv-voted-custom-txt' ); ?>" />
 														</td>
@@ -894,6 +931,36 @@ class DCVote {
 	}
 
 	/*
+	 * FBlike vote ajax
+	 * Check security via nonce
+	 * @since 1.1
+	 */
+	function fblike_ajax_submit() {
+		$nonce = $_POST['dcv_nonce'];
+
+		if ( !wp_verify_nonce( $nonce, 'dcv_submit_nonce' ) )
+			wp_die( 'Don\'t Cheat!' );
+
+		$postID	= $_POST['postID'];
+		$userID		= $_POST['userID'];
+		$voteType	= $_POST['voteType'];
+		$voteValue = $_POST['voteValue'];
+		$authorID 	= $_POST['authorID'];
+		$userIP    	= $this->get_the_ip();
+
+		if ( !empty( $postID ) && ( $userID >= 0 ) && !empty( $authorID ) && !empty( $userIP ) ) {
+			if ( $this->vote( $postID, $userID, $voteType, $voteValue, $authorID, $userIP ) ) {
+				$response = $this->get_vote( $postID, $authorID );
+			}
+			else {
+				$response = "Error: Voting! Please try again later.";
+			}
+		}
+		echo $response;
+		exit;
+	}
+
+	/*
 	 * Implement voting function to show it on the frontend
 	 * Integrate admin voting feature on/off here
 	 * Check allow post author to vote his own posts here
@@ -903,154 +970,82 @@ class DCVote {
 	 */
 	function get_display_vote( $postID ) {
 		global $user_ID, $user_login;
-		$output = '';
 		$user_IP = $this->get_the_ip();
 		$author_ID = get_the_author_meta( 'ID' );
 
-		//## Get current vote count
+		// Get current vote count
 		$curr_votes = $this->get_vote( $postID, $author_ID );
 
-		//## Allow or disallow post author to vote his own posts
+		// Allow or disallow post author to vote his own posts
 		$allow_author_vote = get_option( 'dcv-allow-author-vote' );
-		if ( empty ( $allow_author_vote ) || $allow_author_vote == null || $allow_author_vote == 'No' ) {
-			$allow_author_vote = false;
-		}
-		else {
-			$allow_author_vote = true;
-		}
+		$allow_author_vote = ( empty ( $allow_author_vote ) || $allow_author_vote == null || $allow_author_vote == 'No' ) ?
+			false :
+			true ;
 
-		//## Allow or disallow public vote check
+		// Allow or disallow public vote check
 		$allow_public_vote = get_option( 'dcv-allow-public-vote' );
-		if ( empty( $allow_public_vote ) || $allow_public_vote == null || $allow_public_vote == 'No' ) {
-			$allow_public_vote = false;
-		}
-		else {
-			$allow_public_vote = true;
-		}
+		$allow_public_vote = ( empty( $allow_public_vote ) || $allow_public_vote == null || $allow_public_vote == 'No' ) ?
+			false :
+			true ;
 
-		//## Get custom vote count text
+		// Allow facebook like vote
+		$allow_fblike_vote = get_option( 'dcv-allow-fblike-vote' );
+		$allow_fblike_vote = ( empty( $allow_fblike_vote ) || $allow_fblike_vote == null || $allow_fblike_vote == 'No' ) ?
+			false :
+			true ;
+
+		// Get custom vote count text
 		$voted_custom_txt = get_option( 'dcv-voted-custom-txt' );
 		if ( empty( $voted_custom_txt ) )
-			$voted_custom_txt = 'voted';
+			$voted_custom_txt = 'votes';
 
-		//## Get custom vote button text
+		// Get custom vote button text
 		$vote_btn_custom_txt = get_option( 'dcv-vote-btn-custom-txt' );
 		if ( empty( $vote_btn_custom_txt ) )
 			$vote_btn_custom_txt = 'vote';
+		?>
 
-		//## Voting feature in On
-		if ( get_option ( 'dc-vote-onoff' ) == 'On' ) {
+		<div class="dcv_postvote">
+			<div class="dcv_votewidget" id="dcvvotewidget<?php the_ID(); ?>">
 
-			//## Registered user
-			if ( is_user_logged_in() || $allow_public_vote ) {
-
-				//## Unlogged in
-				if ( !is_user_logged_in() && $allow_public_vote )
-					$user_ID = 0;
-
-				//## Cannot vote their own post (Voting is disallowed) and show vote count and voted btn
-				if ( $user_ID == $author_ID && !$allow_author_vote ) {
-
-					$output .= '<div class="dcv_postvote">'.
-						'<span class="dcv_votewidget" id="dcvvotewidget'.get_the_ID().'">'.
-						'<span class="dcv_votecount" id="dcvvotecount'.get_the_ID().'">'.
-						'<span class="dcv_vcount">'.$curr_votes.' </span>'.
-						$voted_custom_txt.
-						'</span>'.
-						'<span class="dcv_votebtncon">'.
-						'<span class="dcv_votebtn" id="wpvvoteid'.get_the_ID().'">'.
-						'<span class="dcv_voted_icon"></span>'.
-						'<span class="dcv_votebtn_txt dcv_votedbtn_txt">'.$vote_btn_custom_txt.'</span>'.
-						'</span>'.
-						'</span>'.
-						'</span>'.
-						'</div>';
-				}
-				//## Voting is allowed
-				else {
-
-					//## New vote, so allowed and show vote count and vote btn
-					if ( !$this->user_voted( $postID, $user_ID, $author_ID, $user_IP ) ) {
-
-						$output .= '<div class="dcv_postvote">'.
-							'<span class="dcv_votewidget" id="dcvvotewidget'.get_the_ID().'">'.
-							'<span class="dcv_votecount" id="dcvvotecount'.get_the_ID().'">'.
-							'<img title="Loading" alt="Loading" src="'.get_bloginfo( 'url' ).'/wp-content/plugins/wp-voting/images/ajax-loader.gif" class="loadingimage" style="visibility: hidden; display: none;"/>'.
-							'<span class="dcv_vcount">'.$curr_votes.' </span>'.
-							$voted_custom_txt.
-							'</span>'.
-
-							'<span class="dcv_votebtncon">'.
-							'<span class="dcv_votebtn" id="wpvvoteid'.get_the_ID().'">'.
-							'<a title="vote" class="dc_vote" href="javascript:void(0)" >'.
-							'<span class="dcv_vote_icon"></span>'.
-							'<span class="dcv_votebtn_txt">'.$vote_btn_custom_txt.'</span>'.
-							'<input type="hidden" class="postID" value="'.$postID.'" />'.
-							'<input type="hidden" class="userID" value="'.$user_ID.'" />'.
-							'<input type="hidden" class="authorID" value="'.$author_ID.'" />'.
-							'</a>'.
-							'<span class="dcv_voted_icon" style="display: none;"></span>'.
-							'<span class="dcv_votebtn_txt dcv_votedbtn_txt" style="display: none;">'.$vote_btn_custom_txt.'</span>'.
-							'</span>'.
-							'</span>'.
-							'</span>'.
-							'</div>';
+				<?php
+					// Use vote-count.php in theme if available
+					if ( locate_template( 'dc-vote/vote-count.php', false, false ) != '' ) {
+						locate_template( 'dc-vote/vote-count.php', true );
 					}
-					//## Already voted, so disallowed and show vote count and voted btn
 					else {
-
-						$output .= '<div class="dcv_postvote">'.
-							'<span class="dcv_votewidget" id="dcvvotewidget'.get_the_ID().'">'.
-							'<span class="dcv_votecount" id="dcvvotecount'.get_the_ID().'">'.
-							'<span class="dcv_vcount">'.$curr_votes.' </span>'.
-							$voted_custom_txt.
-							'</span>'.
-							'<span class="dcv_votebtncon">'.
-							'<span class="dcv_votebtn" id="wpvvoteid'.get_the_ID().'">'.
-							'<span class="dcv_voted_icon"></span>'.
-							'<span class="dcv_votebtn_txt dcv_votedbtn_txt">'.$vote_btn_custom_txt.'</span>'.
-							'</span>'.
-							'</span>'.
-							'</span>'.
-							'</div>';
+						include $this->plugin_path . 'views/vote-count.php';
 					}
-				}
-			}
-			//## Public vote is not allowed
-			else {
 
-				$output .= '<div class="dcv_postvote">'.
-					'<span class="dcv_votewidget" id="dcvvotewidget'.get_the_ID().'">'.
-					'<span class="dcv_votecount" id="dcvvotecount'.get_the_ID().'">'.
-					'<span class="dcv_vcount">'.$curr_votes.' </span>'.$voted_custom_txt.
-					'</span>'.
-					'<span class="dcv_votebtncon">'.
-					'<span class="dcv_votebtn" id="wpvvoteid'.get_the_ID().'">'.
-					'<a title="vote" href="javascript:dcv_regopen();">'.
-					'<span class="dcv_vote_icon"></span>'.
-					'<span class="dcv_votebtn_txt">'.$vote_btn_custom_txt.'</span>'.
-					'</a>'.
-					'</span>'.
-					'</span>'.
-					'</span>'.
-					'</div>';
-			}
-		}
-		//## Voting feature is off, so show only vote count
-		else {
+					// Voting feature in On
+					if ( get_option ( 'dc-vote-onoff' ) == 'On' ) {
 
-			$output .= '<div class="dcv_postvote">'.
-				'<span class="dcv_votewidget" id="dcvvotewidget'.get_the_ID().'">'.
-				'<span class="dcv_votecount" id="dcvvotecount'.get_the_ID().'">'.
-				'<span class="dcv_vcount">'.$curr_votes.' </span>'.
-				$voted_custom_txt.
-				'</span>'.
-				'</span>'.
-				'</div>';
-		}
+						// Use vote-button.php in theme if available
+						if ( locate_template( 'dc-vote/vote-button.php', false, false ) != '' ) {
+							locate_template( 'dc-vote/vote-button.php', true );
+						}
+						else {
+							include $this->plugin_path . 'views/vote-button.php';
+						}
+					}
 
-		return $output;
-	}
+					if ( $allow_fblike_vote == true && is_user_logged_in() || $allow_public_vote ) {
+						// use vote-fblike.php in theme if available
+						if ( locate_template( 'dc-vote/vote-fblike.php', false, false ) ) {
+							locate_template( 'dc-vote/vote-fblike.php', true );
+						}
+						else {
+							include $this->plugin_path . 'views/vote-fblike.php';
+						}
+					}
+
+				?>
+
+			</div> <!-- end .dcv_votewidget -->
+		</div> <!-- end .dcv_postvote -->
+
+	<?php
+	} // get_display_vote( $postID )
 
 	/*
 	 * Implement voting function to show it on the frontend

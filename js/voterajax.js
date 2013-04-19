@@ -56,28 +56,42 @@ jQuery(document).ready( function($) {
 		return false;
 	});
 
-	window.fbAsyncInit = function() {
+	if ( dcvAjax.allow_fb_vote ) {
+		window.fbAsyncInit = function() {
 			FB.init({
-					appId: '328011467238834',
-					status: true,
-					cookie: true,
-					xfbml: true,
-					oauth: true
+				appId: dcvAjax.fb_app_id,
+				status: true,
+				cookie: true,
+				xfbml: true,
+				oauth: true
 			});
 			FB.Event.subscribe('edge.create', function(response) {
-					alert('You liked the URL: ' + response);
+				FB.getLoginStatus(function (loginResponse) {
+					console.log(loginResponse);
+					FB.api('/me', function (graph) {
+						var token = loginResponse.session.access_token;
+						var fbid = loginResponse.session.uid;
+					});
+					if ( token )
+						console.log(token);
+
+					if ( fbid ) {
+						console.log(fbid);
+					}
+				});
 			});
-	};
-	(function(d) {
+		};
+		(function(d) {
 			var js, id = 'facebook-jssdk';
 			if (d.getElementById(id)) {
-					return;
+				return;
 			}
 			js = d.createElement('script');
 			js.id = id;
 			js.async = true;
 			js.src = "//connect.facebook.net/en_US/all.js";
 			d.getElementsByTagName('head')[0].appendChild(js);
-	}(document));
+		}(document));
+	}
 
 });
