@@ -1,0 +1,36 @@
+#toplevel_page_dcv-admin-voting-logs .wp-menu-image {
+	background-image: url('../images/menu-image.png');
+	background-position: 0 0;
+}
+
+#adminmenu .toplevel_page_dcv-admin-voting-logs:hover div.wp-menu-image,
+#adminmenu .toplevel_page_dcv-admin-voting-logs.wp-has-current-submenu div.wp-menu-image,
+#adminmenu .toplevel_page_dcv-admin-voting-logs.current div.wp-menu-image {
+	background-position: 0 -28px;
+}
+
+#admin_side_tbl {
+	background: none repeat scroll 0 0 #FAFAFA;
+	border: 1px dashed #CCCCCC;
+	width: 100%;
+}
+#admin_side_tbl table {
+	width: 100%;
+}
+#admin_side_tbl thead {
+	background: #DDDDDD;
+}
+#admin_side_tbl thead tr th {
+	text-align: center;
+	color: gray;
+	font-size: 18px;
+}
+.wpv_icode {
+	font-weight: bold;
+	font-style: italic;
+	background-color: #eee;
+}
+div.postbox div.inside {
+	margin: 10px 0;
+	position: relative;
+}
