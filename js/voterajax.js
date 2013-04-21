@@ -1,4 +1,3 @@
-/*jshint multistr: true */
 jQuery(document).ready( function($) {
 
 	$(".dc_vote").click( function(){
@@ -29,6 +28,7 @@ jQuery(document).ready( function($) {
 				dcv_nonce: dcvAjax.dcv_nonce
 			},
 			function(response){
+				var hiddenFields = '<input type="hidden" class="postID" value="' + pID + '" /> <input type="hidden" class="userID" value="' + uID + '" /> <input type="hidden" class="authorID" value="' + aID + '" />';
 				currentobj.css("display", "none");
 				dcv_votebtn.children(".dcv_voted_icon").css("display", "inline-block");
 				dcv_votebtn.children(".dcv_votebtn_txt").css("display", "inline-block");
@@ -38,6 +38,7 @@ jQuery(document).ready( function($) {
 				dcv_votewidget.find('.dcv_votebtn').addClass('dcv_votedbtn');
 				var voted_btn_text = ( dcvAjax.voted_btn_text !== '' ) ? dcvAjax.voted_btn_text : 'Voted' ;
 				dcv_votewidget.find('.dcv_votebtn_txt').text(voted_btn_text);
+				dcv_votewidget.find('.dcv_votebtn_txt').after(hiddenFields);
 				currentobj.remove();
 
 				/*Do updating widget*/
@@ -66,14 +67,11 @@ jQuery(document).ready( function($) {
 			if ( $(this).data('permission') === 'yes' ) {
 				var currentobj = $(this);
 				var dcv_votewidget = currentobj.closest('.dcv_votewidget');
-				var pID = dcv_votewidget.find(".postID").val();
-				var aID = dcv_votewidget.find(".authorID").val();
 
 				/*Display loading image*/
 				dcv_votewidget.children(".dcv_votecount").children(".loadingimage").css("visibility", "visible");
 				dcv_votewidget.children(".dcv_votecount").children(".loadingimage").css("display", "inline-block");
-				setTimeout( function() {}, 1000 ); // Set timeout so that the pID and aID are assigned before recording the like
-				dcvRecordLike(pID, aID, dcv_votewidget);
+				dcvRecordLike(dcv_votewidget);
 				$('.fb-permission').hide();
 			}
 			else if ( $(this).data('permission') === 'no' ) {
@@ -88,7 +86,7 @@ function dcvLogin(postID, authorID, voteWidget) {
 	FB.login(function(response) {
 		if (response.authResponse) {
 			// testAPI();
-			dcvRecordLike(postID, authorID, voteWidget);
+			dcvRecordLike(voteWidget);
 		} else {
 			// console.log('cancelled');
 		}
@@ -102,7 +100,9 @@ function testAPI() {
 	});
 }
 
-function dcvRecordLike(postID, authorID, voteWidget) {
+function dcvRecordLike(voteWidget) {
+	var postID = voteWidget.children('.dcv_votebtncon').children('.dcv_votebtn').find('.postID').val();
+	var authorID = voteWidget.children('.dcv_votebtncon').children('.dcv_votebtn').find('.authorID').val();
 	FB.getLoginStatus(function(response) {
 		if ( response.status === 'connected' ) {
 			FB.api('/me', function (graph) {
@@ -158,7 +158,9 @@ function dcvRecordLike(postID, authorID, voteWidget) {
 	});
 }
 
-function dcvRemoveLike(postID, authorID, voteWidget) {
+function dcvRemoveLike(voteWidget) {
+	var postID = voteWidget.children('.dcv_votebtncon').children('.dcv_votebtn').find('.postID').val();
+	var authorID = voteWidget.children('.dcv_votebtncon').children('.dcv_votebtn').find('.authorID').val();
 	FB.getLoginStatus(function(response) {
 		if ( response.status === 'connected' ) {
 			FB.api('/me', function (graph) {
@@ -224,14 +226,11 @@ if ( dcvAjax.allow_fb_vote ) {
 				if ( response.status === 'connected' ) {
 					var currentobj = $(widget.dom.parentNode);
 					var dcv_votewidget = currentobj.closest('.dcv_votewidget');
-					var pID = dcv_votewidget.find(".postID").val();
-					var aID = dcv_votewidget.find(".authorID").val();
 
 					/*Display loading image*/
 					dcv_votewidget.children(".dcv_votecount").children(".loadingimage").css("visibility", "visible");
 					dcv_votewidget.children(".dcv_votecount").children(".loadingimage").css("display", "inline-block");
-					setTimeout( function() {}, 1000 ); // Set timeout so that the pID and aID are assigned before recording the like
-					dcvRecordLike(pID, aID, dcv_votewidget);
+					dcvRecordLike(dcv_votewidget);
 				}
 				else {
 					$(widget.dom.parentNode).after('<div class="fb-permission"><div class="arrow"></div><p>Give us permission to record your like as ' + dcvAjax.fb_vote_value + ' votes?</p><a data-permission="yes" href="#">Yes</a><a data-permission="no" href="#">No</a></div>');
@@ -258,11 +257,7 @@ if ( dcvAjax.allow_fb_vote ) {
 			dcv_votewidget = $fb_box.closest('.dcv_votewidget');
 			dcv_votewidget.children(".dcv_votecount").children(".loadingimage").css("visibility", "visible");
 			dcv_votewidget.children(".dcv_votecount").children(".loadingimage").css("display", "inline-block");
-
-			var pID = dcv_votewidget.find(".postID").val();
-			var aID = dcv_votewidget.find(".authorID").val();
-			setTimeout( function() {}, 1000 ); // Set timeout so pID and aID is assigned before removing like
-			dcvRemoveLike(pID, aID, dcv_votewidget);
+			dcvRemoveLike(dcv_votewidget);
 		});
 
 	};

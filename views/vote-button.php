@@ -20,6 +20,9 @@
 
 				<span class="dcv_voted_icon"></span>
 				<span class="dcv_votebtn_txt dcv_votedbtn_txt"><?php echo ( $user_voted ) ? $voted_btn_custom_txt : $vote_btn_custom_txt ; ?></span>
+				<input type="hidden" class="postID" value="<?php echo $postID; ?>" />
+				<input type="hidden" class="userID" value="<?php echo $user_ID; ?>" />
+				<input type="hidden" class="authorID" value="<?php echo $author_ID; ?>" />
 
 			<?php } else { ?>
 
@@ -41,6 +44,9 @@
 
 					<span class="dcv_voted_icon"></span>
 					<span class="dcv_votebtn_txt dcv_votedbtn_txt"><?php echo ( $user_voted ) ? $voted_btn_custom_txt : $vote_btn_custom_txt ; ?></span>
+					<input type="hidden" class="postID" value="<?php echo $postID; ?>" />
+					<input type="hidden" class="userID" value="<?php echo $user_ID; ?>" />
+					<input type="hidden" class="authorID" value="<?php echo $author_ID; ?>" />
 
 				<?php
 				}
