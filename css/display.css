@@ -50,15 +50,74 @@
 /*** vote ***/
 .dcv_postvote {
 	margin: 10px 0;
-	font-weight: bold;
-	font-size: 12px !important;
+	font-size: 11px !important;
+	font-family: 'lucida grande', tahoma, verdana, arial, sans-serif;
 }
 .dcv_votewidget {
 }
-.dcv_votecount {
-	margin-right: 12px;
+.dcv_votecount,
+.dcv_votebtncon,
+.dcv-fb-box {
+	display: inline-block;
+	vertical-align: middle;
+	*display: inline;
+	zoom: 1;
 }
-.dcv_votebtncon {
+.dcv_votecount {
+	margin-right: 5px;
+	font-size: 14px;
+	font-family: 'lucida grande', tahoma, verdana, arial, sans-serif;
+}
+.fb-permission {
+	position: absolute;
+	display: none;
+	background-color: #f3f3f3;
+	border: 1px solid #ececec;
+	padding: 5px;
+	text-align: center;
+	-webkit-box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+		-moz-box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+			box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+	-webkit-border-radius: 5px;
+		-moz-border-radius: 5px;
+			border-radius: 5px;
+
+}
+.fb-permission .arrow,
+.fb-permission .arrow:after {
+	position: absolute;
+	display: block;
+	width: 0;
+	height: 0;
+	border-color: transparent;
+	border-style: solid;
+}
+
+.fb-permission .arrow {
+	border-width: 10px;
+}
+
+.fb-permission .arrow:after {
+	border-width: 9px;
+	content: "";
+}
+
+.fb-permission .arrow {
+	bottom: -10px;
+	left: 50%;
+	margin-left: -11px;
+	border-top-color: #ececec;
+	border-bottom-width: 0;
+}
+
+.fb-permission .arrow:after {
+	bottom: 1px;
+	margin-left: -9px;
+	border-top-color: #f3f3f3;
+	border-bottom-width: 0;
+}
+.fb-permission a {
+	margin-right: 5px;
 }
 .dcv_vcount {
 	font-weight: bold;
@@ -66,20 +125,38 @@
 .dcv_votebtn {
 	float: none!important;
 	margin: 0 !important;
+	background-color: #ecf5ed;
+	border: 1px solid #cae7d4;
+	-webkit-border-radius: 3px;
+		-moz-border-radius: 3px;
+			border-radius: 3px;
+}
+.dcv_votebtn:hover {
+	border-color: #99d4ae;
+}
+.dcv_votedbtn {
+	background-color: #f3f3f3;
+	border-color: #ebebeb;
+	padding: 2px;
+}
+.dcv_votedbtn:hover {
+	border-color: #ebebeb;
 }
 .dcv_votebtn a {
+	display: block;
+	padding: 2px;
 	text-decoration: none;
 }
 .dcv_voted_icon {
-	background: url('../images/voted-btn.png') no-repeat;
-	width: 21px;
-	height: 20px;
+	background: url('../images/icon-voted.png') no-repeat left -1px;
+	width: 11px;
+	height: 11px;
 	display: inline-block;
 }
 .dcv_vote_icon {
-	background: url('../images/vote-btn.png') no-repeat;
-	width: 21px;
-	height: 20px;
+	background: url('../images/icon-vote.png') no-repeat left -1px;
+	width: 11px;
+	height: 11px;
 	display: inline-block;
 }
 .dcv_vote_icon,
@@ -90,7 +167,6 @@
 }
 .dcv_votebtn_txt {
 	color: #555555;
-	margin-left: 5px;
 }
 .dcv_votedbtn_txt {
 	color: #999999!important;

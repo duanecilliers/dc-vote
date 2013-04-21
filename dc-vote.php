@@ -90,6 +90,9 @@ class DCVote {
 		add_action( 'wp_ajax_nopriv_dcv-fblike', array( $this, 'fblike_ajax_submit' ) );
 		add_action( 'wp_ajax_dcv-fblike', array( $this, 'fblike_ajax_submit' ) );
 
+		add_action( 'wp_ajax_nopriv_dcv-fb-unlike', array( $this, 'fbunlike_ajax_submit' ) );
+		add_action( 'wp_ajax_dcv-fb-unlike', array( $this, 'fbunlike_ajax_submit' ) );
+
 
 	} // end constructor
 
@@ -161,10 +164,12 @@ class DCVote {
 
 		$allow_fblike_vote = ( get_option( 'dcv-allow-fblike-vote' ) == 'Yes' ) ? true : false ;
 		$fb_app_id = $allow_fblike_vote ? get_option( 'dcv-fb-appid' ) : '' ;
+		$fb_vote_value = get_option( 'dcv-fblike-vote-value' ) ? get_option( 'dcv-fblike-vote-value' ) : 1 ;
 		$dcv_nonce = wp_create_nonce('dcv_submit_nonce');
+		$voted_btn_custom_txt = get_option( 'dcv-voted-btn-custom-txt' );
 		wp_enqueue_script( 'dc-vote-plugin-script', plugins_url( 'dc-vote/js/display.js' ), array( 'jquery' ) );
 		wp_enqueue_script( 'dc-vote-voterajax', plugins_url( 'dc-vote/js/voterajax.js' ), array( 'jquery' ) );
-		wp_localize_script( 'dc-vote-voterajax', 'dcvAjax', array( 'ajaxurl' => admin_url('admin-ajax.php'), 'dcv_nonce' => $dcv_nonce, 'allow_fb_vote' => $allow_fblike_vote, 'fb_app_id' => $fb_app_id ) );
+		wp_localize_script( 'dc-vote-voterajax', 'dcvAjax', array( 'ajaxurl' => admin_url('admin-ajax.php'), 'dcv_nonce' => $dcv_nonce, 'allow_fb_vote' => $allow_fblike_vote, 'fb_app_id' => $fb_app_id, 'fb_vote_value' => $fb_vote_value, 'voted_btn_text' => $voted_btn_custom_txt ) );
 
 	} // end register_plugin_scripts
 
@@ -280,6 +285,7 @@ class DCVote {
 	 * Added dcv-allow-author-vote in v1.0
 	 * Added dcv-voted-custom-txt in v1.0
 	 * Added dcv-vote-btn-custom-txt in v1.0
+	 * Added dcv-voted-btn-custom-txt in v1.1
 	 * Added dcv-custom-css in v1.0
 	 * Added dcv-allow-public-vote in v1.0
 	 * Added dcv-allow-fblike-vote in v1.1
@@ -294,6 +300,7 @@ class DCVote {
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-allow-author-vote', '' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-voted-custom-txt', '' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-vote-btn-custom-txt' );
+		register_setting( 'dcv_admin_vote_form_options', 'dcv-voted-btn-custom-txt' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-custom-css' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-voting-alert-msg', '' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-allow-public-vote', '' );
@@ -325,6 +332,7 @@ class DCVote {
 	 * Fixed initial selected state for options in v1.0
 	 * Added dcv-voted-custom-txt in v1.0
 	 * Added dcv-vote-btn-custom-txt in v1.0
+	 * Added dcv-voted-btn-custom-txt in v1.1
 	 * Added dcv-custom-css in v1.0
 	 * Added dcv-allow-public-vote in v1.0
 	 * Added dcv-allow-fblike-vote in v1.1
@@ -405,9 +413,15 @@ class DCVote {
 														</td>
 													</tr>
 													<tr vlaign="top">
-														<th scope="row">Vote button custom text <br /><strong><i>(default: "vote")</i></strong></th>
+														<th scope="row">Vote button custom text <br /><strong><i>(default: "Vote")</i></strong></th>
 														<td>
 															<input type="text" name="dcv-vote-btn-custom-txt" value="<?php echo get_option( 'dcv-vote-btn-custom-txt' ); ?>" />
+														</td>
+													</tr>
+													<tr vlaign="top">
+														<th scope="row">Voted button custom text <br /><strong><i>(default: "Voted")</i></strong></th>
+														<td>
+															<input type="text" name="dcv-voted-btn-custom-txt" value="<?php echo get_option( 'dcv-voted-btn-custom-txt' ); ?>" />
 														</td>
 													</tr>
 													<tr valign="top">
@@ -560,20 +574,19 @@ class DCVote {
 		$p_ID = $wpdb->escape( $post_ID );
 		$a_ID = $wpdb->escape( $author_ID );
 
-		// Create entries if not existant
-		$this->set_post( $p_ID, $a_ID );
-
 		$votes = $wpdb->get_var( $wpdb->prepare( "SELECT vote_count FROM  ".$wpdb->prefix."dc_vote WHERE post_id = %d AND author_id = %d", $p_ID, $a_ID ) );
+
+		$votes = ( $votes ) ? $votes : '0' ;
 
 		return $votes;
 	}
 
 	/*
-	 * Check an user is already voted the post or not
+	 * Check if user has already voted the post or not
 	 * @return boolean
 	 * @since 1.0
 	 */
-	function user_voted( $post_ID, $user_ID, $author_ID, $user_IP ) {
+	function user_voted( $post_ID, $user_ID, $author_ID, $user_IP, $vote_type = false ) {
 		global $wpdb;
 
 		//  prevents SQL injection
@@ -581,20 +594,30 @@ class DCVote {
 		$u_ID = $wpdb->escape( $user_ID );
 		$a_ID = $wpdb->escape( $author_ID );
 		$u_IP = $wpdb->escape( $user_IP );
+		$v_type = $wpdb->escape( $vote_type );
 
-		//  Create entry if not existant
-		$this->set_post( $p_ID, $a_ID );
-
-		if ( $u_ID == 0 )
-			$voted = $wpdb->get_var( $wpdb->prepare( "SELECT voter_ip FROM ".$wpdb->prefix."dc_vote_meta WHERE post_id = %d AND voter_ip = %s AND voter_id = %s", $p_ID, $u_IP, $u_ID ) );
-		else
-			$voted = $wpdb->get_var( $wpdb->prepare( "SELECT voter_id FROM ".$wpdb->prefix."dc_vote_meta WHERE post_id = %d AND voter_id = %d", $p_ID, $u_ID ) );
+		if ( $u_ID == 0 ) {
+			if ( $vote_type = false ) {
+				$voted = $wpdb->get_var( $wpdb->prepare( "SELECT voter_ip FROM ".$wpdb->prefix."dc_vote_meta WHERE post_id = %d AND voter_ip = %s AND voter_id = %s", $p_ID, $u_IP, $u_ID ) );
+			}
+			else {
+				$voted = $wpdb->get_var( $wpdb->prepare( "SELECT voter_ip FROM ".$wpdb->prefix."dc_vote_meta WHERE post_id = %d AND vote_type = %s AND voter_ip = %s AND voter_id = %s", $p_ID, $v_type, $u_IP, $u_ID ) );
+			}
+		}
+		else {
+			if ( $vote_type = false ) {
+				$voted = $wpdb->get_var( $wpdb->prepare( "SELECT voter_id FROM ".$wpdb->prefix."dc_vote_meta WHERE post_id = %d AND voter_id = %d", $p_ID, $u_ID ) );
+			}
+			else {
+				$voted = $wpdb->get_var( $wpdb->prepare( "SELECT voter_id FROM ".$wpdb->prefix."dc_vote_meta WHERE post_id = %d AND vote_type = %s AND voter_id = %d", $p_ID, $v_type, $u_ID ) );
+			}
+		}
 
 		//  Record not found, so not voted yet
-		if ( empty ( $voted ) || $voted == NULL )
-			$voted = FALSE;
+		if ( empty ( $voted ) || $voted == null )
+			$voted = false;
 		else
-			$voted = TRUE; // already voted
+			$voted = true; // already voted
 
 		return $voted;
 	}
@@ -608,7 +631,7 @@ class DCVote {
 	 */
 	function vote( $post_ID, $user_ID, $vote_type, $vote_value, $author_ID, $user_IP ) {
 		global $wpdb, $current_user;
-		$result = FALSE;
+		$result = false;
 
 		// Prevents SQL injection
 		$p_ID = $wpdb->escape( $post_ID );
@@ -619,26 +642,63 @@ class DCVote {
 		$u_IP = $wpdb->escape( $user_IP );
 		//$dt = date('Y-m-d H:i:s');
 
-		// Prevents fake userID
-		if ( is_user_logged_in() ) {
-			get_currentuserinfo();
-			if ( $current_user->ID != $u_ID )
-				return $result;
+		if ( $v_type != 'facebook' ) {
+			// Prevents fake userID
+			if ( is_user_logged_in() ) {
+				get_currentuserinfo();
+				if ( $current_user->ID != $u_ID )
+					return $result;
+			}
 		}
 
 		$this->set_post( $p_ID, $a_ID );
 
 		$curr_count = $wpdb->get_var( $wpdb->prepare( "SELECT vote_count FROM  ".$wpdb->prefix."dc_vote WHERE post_id = %d AND author_id = %d", $p_ID, $a_ID ) );
 
-		if ( !$this->user_voted( $p_ID, $u_ID, $a_ID, $u_IP ) ) {
-			$new_count = $curr_count + 1;
+		if ( !$this->user_voted( $p_ID, $u_ID, $a_ID, $u_IP, $v_type ) ) {
+			$new_count = $curr_count + $v_value;
 			$wpdb->query( $wpdb->prepare( "UPDATE ".$wpdb->prefix."dc_vote SET vote_count = %d WHERE post_id = %d AND author_id = %d", $new_count, $p_ID, $a_ID ) );
 			$wpdb->query( $wpdb->prepare( "INSERT INTO ".$wpdb->prefix."dc_vote_meta (post_id, voter_id, vote_type, vote_value, vote_date, voter_ip) VALUES (%d, %d, %s, %d, NOW(), %s)", array( $p_ID, $u_ID, $v_type, $v_value, $u_IP ) ) );
 
-			$result = TRUE;
+			$result = true;
 		}
 		else {
-			$result = FALSE;
+			$result = false;
+		}
+		return $result;
+	}
+
+	/*
+	 * Perform voting action here
+	 * Update the vote count in dc_vote tbl
+	 * Insert the voting metadata to dc_vote_meta tbl
+	 * @return boolean
+	 * @since 1.0
+	 */
+	function remove_vote( $post_ID, $user_ID, $vote_type, $vote_value, $author_ID, $user_IP ) {
+		global $wpdb;
+		$result = false;
+
+		// Prevents SQL injection
+		$p_ID = $wpdb->escape( $post_ID );
+		$u_ID = $wpdb->escape( $user_ID );
+		$v_type = $wpdb->escape( $vote_type );
+		$v_value = $wpdb->escape( $vote_value );
+		$a_ID = $wpdb->escape( $author_ID );
+		$u_IP = $wpdb->escape( $user_IP );
+		//$dt = date('Y-m-d H:i:s');
+
+		$curr_count = $wpdb->get_var( $wpdb->prepare( "SELECT vote_count FROM  ".$wpdb->prefix."dc_vote WHERE post_id = %d AND author_id = %d", $p_ID, $a_ID ) );
+
+		if ( $this->user_voted( $p_ID, $u_ID, $a_ID, $u_IP, $v_type ) ) {
+			$new_count = $curr_count - $v_value;
+			$wpdb->query( $wpdb->prepare( "UPDATE ".$wpdb->prefix."dc_vote SET vote_count = %d WHERE post_id = %d AND author_id = %d", $new_count, $p_ID, $a_ID ) );
+			$wpdb->query( $wpdb->prepare( "DELETE FROM ".$wpdb->prefix."dc_vote_meta WHERE post_id = %d AND vote_type = %s AND voter_id = %s", $p_ID, $v_type, $u_ID ) );
+
+			$result = true;
+		}
+		else {
+			$result = false;
 		}
 		return $result;
 	}
@@ -961,6 +1021,36 @@ class DCVote {
 	}
 
 	/*
+	 * FB unlike remote vote ajax
+	 * Check security via nonce
+	 * @since 1.1
+	 */
+	function fbunlike_ajax_submit() {
+		$nonce = $_POST['dcv_nonce'];
+
+		if ( !wp_verify_nonce( $nonce, 'dcv_submit_nonce' ) )
+			wp_die( 'Don\'t Cheat!' );
+
+		$postID	= $_POST['postID'];
+		$userID		= $_POST['userID'];
+		$voteType	= $_POST['voteType'];
+		$voteValue = $_POST['voteValue'];
+		$authorID 	= $_POST['authorID'];
+		$userIP    	= $this->get_the_ip();
+
+		if ( !empty( $postID ) && ( $userID >= 0 ) && !empty( $authorID ) && !empty( $userIP ) ) {
+			if ( $this->remove_vote( $postID, $userID, $voteType, $voteValue, $authorID, $userIP ) ) {
+				$response = $this->get_vote( $postID, $authorID );
+			}
+			else {
+				$response = $this->get_vote( $postID, $authorID );
+			}
+		}
+		echo $response;
+		exit;
+	}
+
+	/*
 	 * Implement voting function to show it on the frontend
 	 * Integrate admin voting feature on/off here
 	 * Check allow post author to vote his own posts here
@@ -1002,7 +1092,12 @@ class DCVote {
 		// Get custom vote button text
 		$vote_btn_custom_txt = get_option( 'dcv-vote-btn-custom-txt' );
 		if ( empty( $vote_btn_custom_txt ) )
-			$vote_btn_custom_txt = 'vote';
+			$vote_btn_custom_txt = 'Vote';
+
+		// Get custom voted button text
+		$voted_btn_custom_txt = get_option( 'dcv-voted-btn-custom-txt' );
+		if ( empty( $voted_btn_custom_txt ) )
+			$voted_btn_custom_txt = 'Voted';
 		?>
 
 		<div class="dcv_postvote">
