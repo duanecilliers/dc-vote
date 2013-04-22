@@ -125,6 +125,7 @@
 .dcv_votebtn {
 	float: none!important;
 	margin: 0 !important;
+	padding: 2px;
 	background-color: #ecf5ed;
 	border: 1px solid #cae7d4;
 	-webkit-border-radius: 3px;
@@ -137,14 +138,12 @@
 .dcv_votedbtn {
 	background-color: #f3f3f3;
 	border-color: #ebebeb;
-	padding: 2px;
 }
 .dcv_votedbtn:hover {
 	border-color: #ebebeb;
 }
 .dcv_votebtn a {
 	display: block;
-	padding: 2px;
 	text-decoration: none;
 }
 .dcv_voted_icon {
