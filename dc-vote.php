@@ -665,6 +665,9 @@ class DCVote {
 		else {
 			$result = false;
 		}
+
+		do_action( 'dcv_after_vote', $p_ID, $u_ID, $result );
+
 		return $result;
 	}
 
