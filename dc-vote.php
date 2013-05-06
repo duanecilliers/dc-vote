@@ -675,7 +675,7 @@ class DCVote {
 			$result = false;
 		}
 
-		do_action( 'dcv_after_vote', $p_ID, $u_ID, $result );
+		do_action( 'dcv_after_vote', $result, $p_ID, $v_value );
 
 		return $result;
 	}
