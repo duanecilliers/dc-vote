@@ -3,7 +3,7 @@
 Plugin Name: DC Vote
 Plugin URI: http://duane.co.za/plugins/dc-vote
 Description: Add voting functionality to posts, pages or custom post types. Enhanced with AJAX for real-time updates. Allow Facebook likes and Tweets to count as a vote! Administrators have complete control over voting features as well as the ability to easily create a custom template for displaying the vote button and text.
-Version: 1.1
+Version: 1.2
 Author: Duane Cilliers
 Author URI: http://duane.co.za/
 Author Email: duanecilliers@gmail.com
@@ -164,12 +164,13 @@ class DCVote {
 
 		$allow_fblike_vote = ( get_option( 'dcv-allow-fblike-vote' ) == 'Yes' ) ? true : false ;
 		$fb_app_id = $allow_fblike_vote ? get_option( 'dcv-fb-appid' ) : '' ;
+		$vote_value = get_option( 'dcv-loggedin-vote-value' ) ? get_option( 'dcv-loggedin-vote-value' ) : 1 ;
 		$fb_vote_value = get_option( 'dcv-fblike-vote-value' ) ? get_option( 'dcv-fblike-vote-value' ) : 1 ;
 		$dcv_nonce = wp_create_nonce('dcv_submit_nonce');
 		$voted_btn_custom_txt = get_option( 'dcv-voted-btn-custom-txt' );
 		wp_enqueue_script( 'dc-vote-plugin-script', plugins_url( 'dc-vote/js/display.js' ), array( 'jquery' ) );
 		wp_enqueue_script( 'dc-vote-voterajax', plugins_url( 'dc-vote/js/voterajax.js' ), array( 'jquery' ) );
-		wp_localize_script( 'dc-vote-voterajax', 'dcvAjax', array( 'ajaxurl' => admin_url('admin-ajax.php'), 'dcv_nonce' => $dcv_nonce, 'allow_fb_vote' => $allow_fblike_vote, 'fb_app_id' => $fb_app_id, 'fb_vote_value' => $fb_vote_value, 'voted_btn_text' => $voted_btn_custom_txt ) );
+		wp_localize_script( 'dc-vote-voterajax', 'dcvAjax', array( 'ajaxurl' => admin_url('admin-ajax.php'), 'dcv_nonce' => $dcv_nonce, 'allow_fb_vote' => $allow_fblike_vote, 'fb_app_id' => $fb_app_id, 'vote_value' => $vote_value, 'fb_vote_value' => $fb_vote_value, 'voted_btn_text' => $voted_btn_custom_txt ) );
 
 	} // end register_plugin_scripts
 
@@ -288,6 +289,7 @@ class DCVote {
 	 * Added dcv-voted-btn-custom-txt in v1.1
 	 * Added dcv-custom-css in v1.0
 	 * Added dcv-allow-public-vote in v1.0
+	 * Added dcv-loggedin-vote-value in v1.2
 	 * Added dcv-allow-fblike-vote in v1.1
 	 * Added dcv-fblike-vote-value in v1.1
 	 * Added dcv-fb-appid in v1.1
@@ -304,6 +306,7 @@ class DCVote {
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-custom-css' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-voting-alert-msg', '' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-allow-public-vote', '' );
+		register_setting( 'dcv_admin_vote_form_options', 'dcv-loggedin-vote-value', '' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-allow-fblike-vote', '' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-fblike-vote-value', 'intval' );
 		register_setting( 'dcv_admin_vote_form_options', 'dcv-fb-appid' );
@@ -385,6 +388,12 @@ class DCVote {
 														<td>
 															<input type="radio" name="dcv-allow-public-vote" value="Yes" <?php if ( $allow_public_vote == 'Yes' ) echo 'checked="checked"'; ?> /> Yes
 															<input type="radio" name="dcv-allow-public-vote" value="No" <?php if ( $allow_public_vote == 'No' || empty( $allow_public_vote ) ) echo 'checked="checked"'; ?> /> No
+														</td>
+													</tr>
+													<tr vlaign="top">
+														<th scope="row">Value of a logged in vote <br /><strong><i>(default: 1)</i></strong></th>
+														<td>
+															<input type="text" name="dcv-loggedin-vote-value" value="<?php echo get_option( 'dcv-loggedin-vote-value' ); ?>" />
 														</td>
 													</tr>
 													<tr valign="top">

@@ -8,7 +8,7 @@ jQuery(document).ready( function($) {
 		var pID = currentobj.children(".postID").val();
 		var uID = currentobj.children(".userID").val();
 		var vType = ( loggedIn === true ) ? 'logged-in' : 'logged-out' ;
-		var vValue = ( vType === 'logged-in' ) ? 2 : 1 ;
+		var vValue = ( vType === 'logged-in' ) ? dcvAjax.vote_value : 1 ;
 		var aID = currentobj.children(".authorID").val();
 
 		/*Display loading image*/
