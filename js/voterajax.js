@@ -1,6 +1,7 @@
 jQuery(document).ready( function($) {
 
-	$(".dc_vote").click( function(){
+	$(".dc_vote").click( function(e){
+		e.preventDefault();
 		var currentobj = $(this);
 		var loggedIn = $('body').hasClass('logged-in') ? true : false ;
 		var dcv_votewidget = currentobj.parents(".dcv_votebtn").parents(".dcv_votebtncon").parents(".dcv_votewidget");
@@ -27,7 +28,11 @@ jQuery(document).ready( function($) {
 				authorID: aID,
 				dcv_nonce: dcvAjax.dcv_nonce
 			},
-			function(response){
+			function(response, textStatus){
+				if (response === '' || textStatus !== 'success' ) {
+					return false;
+				}
+
 				var hiddenFields = '<input type="hidden" class="postID" value="' + pID + '" /> <input type="hidden" class="userID" value="' + uID + '" /> <input type="hidden" class="authorID" value="' + aID + '" />';
 				currentobj.css("display", "none");
 				dcv_votebtn.children(".dcv_voted_icon").css("display", "inline-block");
@@ -40,6 +45,12 @@ jQuery(document).ready( function($) {
 				dcv_votewidget.find('.dcv_votebtn_txt').text(voted_btn_text);
 				dcv_votewidget.find('.dcv_votebtn_txt').after(hiddenFields);
 				currentobj.remove();
+
+				// Create a wordpress ajax hook if vote was successful for use in third party plugins or themes
+				// dcvSubmitExtHandler() function must be placed above wp_head() !!!
+				if ( response !== 'Error: Voting! Please try again later.' ) {
+					$.post(dcvAjax.ajaxurl, {action: 'dcv-submit-success'}, dcvSubmitExtHandler);
+				}
 
 				/*Do updating widget*/
 				$.post(
@@ -58,7 +69,6 @@ jQuery(document).ready( function($) {
 				);
 			}
 		);
-		return false;
 	});
 
 	$('.dcv_votewidget').delegate('a', 'click', function(e) {

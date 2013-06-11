@@ -585,7 +585,7 @@ class DCVote {
 
 		$votes = $wpdb->get_var( $wpdb->prepare( "SELECT vote_count FROM  ".$wpdb->prefix."dc_vote WHERE post_id = %d AND author_id = %d", $p_ID, $a_ID ) );
 
-		$votes = ( $votes ) ? $votes : '0' ;
+		$votes = ( ! is_null( $votes ) ) ? $votes : '0' ;
 
 		return $votes;
 	}
@@ -668,7 +668,6 @@ class DCVote {
 			$new_count = $curr_count + $v_value;
 			$wpdb->query( $wpdb->prepare( "UPDATE ".$wpdb->prefix."dc_vote SET vote_count = %d WHERE post_id = %d AND author_id = %d", $new_count, $p_ID, $a_ID ) );
 			$wpdb->query( $wpdb->prepare( "INSERT INTO ".$wpdb->prefix."dc_vote_meta (post_id, voter_id, vote_type, vote_value, vote_date, voter_ip) VALUES (%d, %d, %s, %d, NOW(), %s)", array( $p_ID, $u_ID, $v_type, $v_value, $u_IP ) ) );
-
 			$result = true;
 		}
 		else {
@@ -971,6 +970,8 @@ class DCVote {
 		$voteValue = $_POST['voteValue'];
 		$authorID 	= $_POST['authorID'];
 		$userIP    	= $this->get_the_ip();
+
+		$response 	= '';
 
 		if ( !empty( $postID ) && ( $userID >= 0 ) && !empty( $authorID ) && !empty( $userIP ) ) {
 			if ( $this->vote( $postID, $userID, $voteType, $voteValue, $authorID, $userIP ) ) {
