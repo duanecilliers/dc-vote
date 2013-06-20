@@ -800,12 +800,13 @@ class DCVote {
 					<th>Voter</th>
 					<th><a href="?page=dcv-admin-voting-logs&orderby=vote_date<?php echo $pg_link; ?>" title="Order by vote date">Vote date</a></th>
 					<th><a href="?page=dcv-admin-voting-logs&orderby=vote_count<?php echo $pg_link; ?>" title="Order by vote count">Current vote count</a></th>
+					<th>IP Address</th>
 					<th>Reset vote</th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php
-			$result = $wpdb->get_results( $wpdb->prepare( "SELECT ".$wpdb->prefix."dc_vote.post_id, author_id, voter_id, vote_count, vote_date FROM ".$wpdb->prefix."dc_vote INNER JOIN ".$wpdb->prefix."dc_vote_meta ON ".$wpdb->prefix."dc_vote.post_id = ".$wpdb->prefix."dc_vote_meta.post_id WHERE vote_count <> 0 ORDER BY $orderby DESC $limit" ) );
+			$result = $wpdb->get_results( $wpdb->prepare( "SELECT ".$wpdb->prefix."dc_vote.post_id, author_id, voter_id, vote_count, vote_date, voter_ip FROM ".$wpdb->prefix."dc_vote INNER JOIN ".$wpdb->prefix."dc_vote_meta ON ".$wpdb->prefix."dc_vote.post_id = ".$wpdb->prefix."dc_vote_meta.post_id WHERE vote_count <> 0 ORDER BY $orderby DESC $limit" ) );
 
 			if ( $result > 0 && !empty( $result ) ) {
 				foreach ( $result as $row ) {
@@ -822,6 +823,7 @@ class DCVote {
 					$post_authorID = $post_data->post_author;
 					$post_author_info = get_userdata( $post_authorID );
 					$vote_date = date( 'd/m/Y H:i a', strtotime( $row->vote_date ) ); //new DateTime($row->vote_date);
+					$voter_ip = ! empty( $row->voter_ip ) ? $row->voter_ip : 'NULL' ;
 					echo '<tr>';
 					echo '<td>';
 					echo '<a href="'.get_permalink( $row->post_id ).'" target="_blank">'.$post_data->post_title.'</a>';
@@ -844,6 +846,10 @@ class DCVote {
 					echo '</td>';
 
 					echo '<td>';
+					echo $voter_ip;
+					echo '</td>';
+
+					echo '<td>';
 					echo '<a class="button reset-entry-votes" href="?page=dcv-admin-voting-logs&reset='.$row->post_id.'" >Reset</a>';
 					echo '</td>';
 					echo '</tr>';
@@ -861,6 +867,7 @@ class DCVote {
 					<th>Voter</th>
 					<th><a href="?page=dcv-admin-voting-logs&orderby=vote_date<?php echo $pg_link; ?>" title="Order by vote date">Vote date</a></th>
 					<th><a href="?page=dcv-admin-voting-logs&orderby=vote_count<?php echo $pg_link; ?>" title="Order by vote count">Current vote count</a></th>
+					<th>IP Address</th>
 					<th>Reset vote</th>
 				</tr>
 			</tfoot>
